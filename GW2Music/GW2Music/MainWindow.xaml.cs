@@ -57,16 +57,15 @@ namespace GW2Music
             Song s = RetrieveSong();
             int counter = 0;
             // Tempo items are not needed
-            //string tempoStr = tempoTB.Text;
-            //int tempo = 60;
-            //try
-            //{
-            //    tempo = int.Parse(tempoStr);
-            //} catch(FormatException) { }
-            //int fullBar = (int)(60 * 1000);
-            //fullBar = (int)(fullBar / s.Meter);
-            //int noteDelay = (int)(fullBar / tempo);
-            ////noteDelay = (int)(noteDelay / s.Meter);
+            string tempoStr = tempoTB.Text;
+            int tempo = 60;
+            try
+            {
+                tempo = int.Parse(tempoStr);
+            }
+            catch (FormatException) { }
+            int fullBar = (int)(60 * 1000);
+            int noteDelay = (int)(fullBar / (tempo * s.Meter));
             Thread t = new Thread(() =>
             {
                 foreach (Command c in s.Notes)
@@ -92,21 +91,19 @@ namespace GW2Music
                     }
                     if (c.UseNoteDelay)
                     {
-                        Thread.Sleep(2);
-                        //Thread.Sleep(noteDelay);
+                        Thread.Sleep(noteDelay);
                     }
                     counter++;
                     SetStatus("Line " + counter + "/" + s.Notes.Count);
                 }
                 SetStatus("Done. Played " + counter + "/" + s.Notes.Count + " lines");
-                //MessageBox.Show("Song complete. Notes played: " + counter + " of " + s.Notes.Count);
             });
             Thread timer = new Thread(() =>
             {
                 int ctr = 3;
                 while(ctr >= 0)
                 {
-                    SetStatus("Starting in " + ctr + "...");
+                    SetStatus("Starting in " + ctr + "..." + " Delay: " + noteDelay);
                     ctr--;
                     Thread.Sleep(1000); 
                 }
