@@ -16,6 +16,19 @@ namespace GW2Music
         Key,
     }
 
+    public enum Instrument
+    {
+        All,
+        None,
+        Bell,
+        Flute,
+        Horn,
+        Harp,
+        Lute,
+        Bell2,
+        Bass,
+    }
+
     class Command
     {
         public CommandType Type { get; set; } = CommandType.None;
@@ -33,6 +46,7 @@ namespace GW2Music
         public List<Command> Notes { get; set; }
         public int Tempo { get; set; } = 60;
         public int Meter { get; set; } = 1;
+        public Instrument Instrument { get; set; } = Instrument.None;
 
         public Song() { }
     }
@@ -49,6 +63,17 @@ namespace GW2Music
             if(!Library.ContainsKey(name))
             {
                 Library.Add(name, song);
+                output = true;
+            }
+            return output;
+        }
+
+        public bool UpdateSong(string name, Song song)
+        {
+            bool output = false;
+            if(Library.ContainsKey(name))
+            {
+                Library[name] = song;
                 output = true;
             }
             return output;

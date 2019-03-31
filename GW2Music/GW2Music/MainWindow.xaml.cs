@@ -27,6 +27,40 @@ namespace GW2Music
         private SongLibrary library;
         private string songName = "";
         private bool runScript = false;
+        Song emptySlot = new Song()
+        {
+            Name = ""
+        };
+        List<string> meterOptions = new List<string>
+            {
+                "1/1",
+                "1/2",
+                "1/4",
+                "1/8",
+                "1/16",
+            };
+        private List<Instrument> instrumentFilter = new List<Instrument>()
+        {
+            Instrument.All,
+            Instrument.Bass,
+            Instrument.Bell,
+            Instrument.Bell2,
+            Instrument.Flute,
+            Instrument.Harp,
+            Instrument.Horn,
+            Instrument.Lute
+        };
+        private List<Instrument> instruments = new List<Instrument>()
+        {
+            Instrument.None,
+            Instrument.Bass,
+            Instrument.Bell,
+            Instrument.Bell2,
+            Instrument.Flute,
+            Instrument.Harp,
+            Instrument.Horn,
+            Instrument.Lute
+        };
 
         public MainWindow()
         {
@@ -35,20 +69,16 @@ namespace GW2Music
             inputSimulator = new InputSimulator();
 
             songDD.SelectionChanged += LoadSelectedSong;
-            List<string> meterOptions = new List<string>
-            {
-                "1/1",
-                "1/2",
-                "1/4",
-                "1/8",
-                "1/16",
-            };
+            instrumentFilterDD.SelectionChanged += FilterBySelectedInstrument;
+            
             meterDD.ItemsSource = meterOptions;
             meterDD.Dispatcher.Invoke(DispatcherPriority.Normal,
                 new Action(() =>
                 {
                     meterDD.SelectedItem = "1/4";
                 }));
+
+            PopulateInstruments();
         }
 
         private void startBTN_Click(object sender, RoutedEventArgs e)
@@ -137,8 +167,80 @@ namespace GW2Music
                     LoadLibrary();
                 }
             }
-            scriptTB.Text = "";
-            nameTB.Text = "";
+        }
+
+        private void overwriteBTN_Click(object sender, RoutedEventArgs e)
+        {
+            Song s = ParseSong(scriptTB.Text);
+            //string name = nameTB.Text;
+            string name = (string)songDD.SelectedItem;
+            string tempoStr = tempoTB.Text;
+            int tempo = 60;
+            if (name.Length > 0)
+            {
+                s.Name = name;
+                try
+                {
+                    tempo = int.Parse(tempoStr);
+                }
+                catch (FormatException) { }
+                s.Tempo = tempo;
+                if(library.UpdateSong(name, s))
+                {
+                    JsonHandler.SaveLibrary(library);
+                    LoadLibrary();
+                }
+                //if (library.AddSong(name, s))
+                //{
+                //    JsonHandler.SaveLibrary(library);
+                //    LoadLibrary();
+                //}
+            }
+            //scriptTB.Text = "";
+            //nameTB.Text = "";
+            clearScriptBox_Click(null, null);
+        }
+
+        private void clearScriptBox_Click(object sender, RoutedEventArgs e)
+        {
+            scriptTB.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    scriptTB.Text = "";
+                }));
+            meterDD.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    meterDD.SelectedItem = "1/4";
+                }));
+            tempoTB.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    tempoTB.Text = "60";
+                }));
+            instrumentFilterDD.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    instrumentFilterDD.SelectedItem = Instrument.All;
+                }));
+            instrumentDD.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    instrumentDD.SelectedItem = Instrument.None;
+                }));
+        }
+
+        private void AppExit_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void PopulateInstruments()
+        {
+            instrumentDD.ItemsSource = instruments;
+            instrumentFilterDD.ItemsSource = instrumentFilter;
+
+            instrumentDD.SelectedItem = Instrument.None;
         }
 
         private void LoadLibrary()
@@ -149,18 +251,33 @@ namespace GW2Music
 
             //JsonHandler.SaveLibrary(library);
 
-            PopulateSavedSongs();
+            //PopulateSavedSongs();
+            instrumentFilterDD.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    instrumentFilterDD.SelectedItem = Instrument.All;
+                }));
+            songDD.Dispatcher.Invoke(DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    songDD.SelectedItem = emptySlot.Name;
+                }));
         }
 
-        private void PopulateSavedSongs()
+        private void PopulateSavedSongs(Instrument i)
         {
             songDD.Dispatcher.Invoke(DispatcherPriority.Normal,
                 new Action(() =>
                 {
+                    
                     songDD.Items.Clear();
+                    songDD.Items.Add(emptySlot.Name);
                     foreach(Song s in library.Library.Values)
                     {
-                        songDD.Items.Add(s.Name);
+                        if((i == Instrument.All) || (i == s.Instrument))
+                        {
+                            songDD.Items.Add(s.Name);
+                        }
                     }
                 }));
         }
@@ -205,8 +322,23 @@ namespace GW2Music
                             string m = "1/" + s.Meter;
                             meterDD.SelectedItem = m;
                         }));
+                    instrumentDD.Dispatcher.Invoke(DispatcherPriority.Normal,
+                        new Action(() =>
+                        {
+                            instrumentDD.SelectedItem = s.Instrument;
+                        }));
+                } else
+                {
+                    clearScriptBox_Click(null, null);
                 }
             }
+        }
+
+        public void FilterBySelectedInstrument(object sender, SelectionChangedEventArgs e)
+        {
+            clearScriptBox_Click(null, null);
+            Instrument selInstrument = (Instrument)instrumentFilterDD.SelectedItem;
+            PopulateSavedSongs(selInstrument);
         }
 
         private void SetStatus(string txt)
@@ -268,6 +400,8 @@ namespace GW2Music
             string[] meterStrSpl = meterStr.Split('/');
             int meter = int.Parse(meterStrSpl[1]);
             s.Meter = meter;
+
+            s.Instrument = (Instrument)instrumentDD.SelectedItem;
 
             return s;
         }
@@ -358,6 +492,7 @@ namespace GW2Music
         {
             inputSimulator.Keyboard.KeyUp(k);
         }
+
         
     }
 }
